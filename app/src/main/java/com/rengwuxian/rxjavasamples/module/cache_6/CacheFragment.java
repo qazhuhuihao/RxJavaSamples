@@ -22,15 +22,17 @@ import com.rengwuxian.rxjavasamples.module.cache_6.data.Data;
 
 import java.util.List;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import rx.Observer;
+import io.reactivex.Observer;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.functions.Consumer;
 
 public class CacheFragment extends BaseFragment {
-    @Bind(R.id.loadingTimeTv) TextView loadingTimeTv;
-    @Bind(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
-    @Bind(R.id.cacheRv) RecyclerView cacheRv;
+    @BindView(R.id.loadingTimeTv) TextView loadingTimeTv;
+    @BindView(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
+    @BindView(R.id.cacheRv) RecyclerView cacheRv;
     ItemListAdapter adapter = new ItemListAdapter();
     private long startingTime;
 
@@ -53,25 +55,21 @@ public class CacheFragment extends BaseFragment {
         swipeRefreshLayout.setRefreshing(true);
         startingTime = System.currentTimeMillis();
         unsubscribe();
-        subscription = Data.getInstance()
-                .subscribeData(new Observer<List<Item>>() {
+        disposable = Data.getInstance()
+                .subscribeData(new Consumer<List<Item>>() {
                     @Override
-                    public void onCompleted() {
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        e.printStackTrace();
-                        swipeRefreshLayout.setRefreshing(false);
-                        Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
-                    }
-
-                    @Override
-                    public void onNext(List<Item> items) {
+                    public void accept(@NonNull List<Item> items) throws Exception {
                         swipeRefreshLayout.setRefreshing(false);
                         int loadingTime = (int) (System.currentTimeMillis() - startingTime);
                         loadingTimeTv.setText(getString(R.string.loading_time_and_source, loadingTime, Data.getInstance().getDataSourceText()));
                         adapter.setItems(items);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception {
+                        throwable.printStackTrace();
+                        swipeRefreshLayout.setRefreshing(false);
+                        Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
                     }
                 });
     }

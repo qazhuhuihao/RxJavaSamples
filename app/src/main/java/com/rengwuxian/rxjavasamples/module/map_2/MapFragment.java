@@ -24,40 +24,24 @@ import com.rengwuxian.rxjavasamples.util.GankBeautyResultToItemsMapper;
 
 import java.util.List;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import rx.Observer;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 public class MapFragment extends BaseFragment {
     private int page = 0;
 
-    @Bind(R.id.pageTv) TextView pageTv;
-    @Bind(R.id.previousPageBt) Button previousPageBt;
-    @Bind(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
-    @Bind(R.id.gridRv) RecyclerView gridRv;
+    @BindView(R.id.pageTv) TextView pageTv;
+    @BindView(R.id.previousPageBt) Button previousPageBt;
+    @BindView(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
+    @BindView(R.id.gridRv) RecyclerView gridRv;
 
     ItemListAdapter adapter = new ItemListAdapter();
-    Observer<List<Item>> observer = new Observer<List<Item>>() {
-        @Override
-        public void onCompleted() {
-        }
-
-        @Override
-        public void onError(Throwable e) {
-            swipeRefreshLayout.setRefreshing(false);
-            Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
-        }
-
-        @Override
-        public void onNext(List<Item> images) {
-            swipeRefreshLayout.setRefreshing(false);
-            pageTv.setText(getString(R.string.page_with_number, page));
-            adapter.setItems(images);
-        }
-    };
 
     @OnClick(R.id.previousPageBt)
     void previousPage() {
@@ -78,12 +62,25 @@ public class MapFragment extends BaseFragment {
     private void loadPage(int page) {
         swipeRefreshLayout.setRefreshing(true);
         unsubscribe();
-        subscription = Network.getGankApi()
+        disposable = Network.getGankApi()
                 .getBeauties(10, page)
                 .map(GankBeautyResultToItemsMapper.getInstance())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(observer);
+                .subscribe(new Consumer<List<Item>>() {
+                    @Override
+                    public void accept(@NonNull List<Item> items) throws Exception {
+                        swipeRefreshLayout.setRefreshing(false);
+                        pageTv.setText(getString(R.string.page_with_number, MapFragment.this.page));
+                        adapter.setItems(items);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception {
+                        swipeRefreshLayout.setRefreshing(false);
+                        Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Nullable

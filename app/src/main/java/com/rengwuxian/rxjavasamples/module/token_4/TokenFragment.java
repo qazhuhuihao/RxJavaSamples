@@ -19,43 +19,43 @@ import com.rengwuxian.rxjavasamples.network.api.FakeApi;
 import com.rengwuxian.rxjavasamples.model.FakeThing;
 import com.rengwuxian.rxjavasamples.model.FakeToken;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import rx.Observable;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.functions.Func1;
-import rx.schedulers.Schedulers;
+import io.reactivex.Observable;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
+import io.reactivex.schedulers.Schedulers;
 
 public class TokenFragment extends BaseFragment {
 
-    @Bind(R.id.tokenTv) TextView tokenTv;
-    @Bind(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
+    @BindView(R.id.tokenTv) TextView tokenTv;
+    @BindView(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
 
     @OnClick(R.id.requestBt)
     void upload() {
         swipeRefreshLayout.setRefreshing(true);
         unsubscribe();
         final FakeApi fakeApi = Network.getFakeApi();
-        subscription = fakeApi.getFakeToken("fake_auth_code")
-                .flatMap(new Func1<FakeToken, Observable<FakeThing>>() {
+        disposable = fakeApi.getFakeToken("fake_auth_code")
+                .flatMap(new Function<FakeToken, Observable<FakeThing>>() {
                     @Override
-                    public Observable<FakeThing> call(FakeToken fakeToken) {
+                    public Observable<FakeThing> apply(FakeToken fakeToken) {
                         return fakeApi.getFakeData(fakeToken);
                     }
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<FakeThing>() {
+                .subscribe(new Consumer<FakeThing>() {
                     @Override
-                    public void call(FakeThing fakeData) {
+                    public void accept(FakeThing fakeData) {
                         swipeRefreshLayout.setRefreshing(false);
                         tokenTv.setText(getString(R.string.got_data, fakeData.id, fakeData.name));
                     }
-                }, new Action1<Throwable>() {
+                }, new Consumer<Throwable>() {
                     @Override
-                    public void call(Throwable throwable) {
+                    public void accept(Throwable throwable) {
                         swipeRefreshLayout.setRefreshing(false);
                         Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
                     }

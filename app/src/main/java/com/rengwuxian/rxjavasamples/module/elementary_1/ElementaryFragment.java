@@ -22,35 +22,20 @@ import com.rengwuxian.rxjavasamples.model.ZhuangbiImage;
 
 import java.util.List;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnCheckedChanged;
-import rx.Observer;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 public class ElementaryFragment extends BaseFragment {
-    @Bind(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
-    @Bind(R.id.gridRv) RecyclerView gridRv;
+    @BindView(R.id.swipeRefreshLayout) SwipeRefreshLayout swipeRefreshLayout;
+    @BindView(R.id.gridRv) RecyclerView gridRv;
 
     ZhuangbiListAdapter adapter = new ZhuangbiListAdapter();
-    Observer<List<ZhuangbiImage>> observer = new Observer<List<ZhuangbiImage>>() {
-        @Override
-        public void onCompleted() {
-        }
-
-        @Override
-        public void onError(Throwable e) {
-            swipeRefreshLayout.setRefreshing(false);
-            Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
-        }
-
-        @Override
-        public void onNext(List<ZhuangbiImage> images) {
-            swipeRefreshLayout.setRefreshing(false);
-            adapter.setImages(images);
-        }
-    };
 
     @OnCheckedChanged({R.id.searchRb1, R.id.searchRb2, R.id.searchRb3, R.id.searchRb4})
     void onTagChecked(RadioButton searchRb, boolean checked) {
@@ -63,11 +48,23 @@ public class ElementaryFragment extends BaseFragment {
     }
 
     private void search(String key) {
-        subscription = Network.getZhuangbiApi()
+        disposable = Network.getZhuangbiApi()
                 .search(key)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(observer);
+                .subscribe(new Consumer<List<ZhuangbiImage>>() {
+                    @Override
+                    public void accept(@NonNull List<ZhuangbiImage> images) throws Exception {
+                        swipeRefreshLayout.setRefreshing(false);
+                        adapter.setImages(images);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception {
+                        swipeRefreshLayout.setRefreshing(false);
+                        Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Nullable
